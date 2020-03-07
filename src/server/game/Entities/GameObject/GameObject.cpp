@@ -708,7 +708,6 @@ void GameObject::Update(uint32 diff)
             {
                 SetRespawnTime(0);
                 Delete();
-                return;
             }
 
             SetLootState(GO_READY);
