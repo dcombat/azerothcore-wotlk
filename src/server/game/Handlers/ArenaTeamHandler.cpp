@@ -16,6 +16,7 @@
 #include "SocialMgr.h"
 #include "ArenaTeamMgr.h"
 #include "Opcodes.h"
+#include "BattlegroundMgr.h"
 
 void WorldSession::HandleInspectArenaTeamsOpcode(WorldPacket & recvData)
 {
@@ -233,6 +234,19 @@ void WorldSession::HandleArenaTeamLeaveOpcode(WorldPacket & recvData)
         return;
     }
 
+    // Player cannot be removed during queues
+    if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+    {
+        GroupQueueInfo ginfo;
+        BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+        if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+            if (ginfo.IsInvitedToBGInstanceGUID)
+            {
+                SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAMS_LOCKED);
+                return;
+            }
+    }
+
     // If team consists only of the captain, disband the team
     if (_player->GetGUID() == arenaTeam->GetCaptain())
     {
@@ -264,6 +278,16 @@ void WorldSession::HandleArenaTeamDisbandOpcode(WorldPacket & recvData)
         // Only captain can disband the team
         if (arenaTeam->GetCaptain() != _player->GetGUID())
             return;
+
+        // Teams cannot be disbanded during queues
+        if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+        {
+            GroupQueueInfo ginfo;
+            BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+            if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+                if (ginfo.IsInvitedToBGInstanceGUID)
+                    return;
+        }
 
         // Teams cannot be disbanded during fights
         if (arenaTeam->IsFighting())
@@ -314,6 +338,19 @@ void WorldSession::HandleArenaTeamRemoveOpcode(WorldPacket & recvData)
     {
         SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAM_LEADER_LEAVE_S);
         return;
+    }
+
+    // Team cannot be removed during queues
+    if (BattlegroundQueueTypeId bgQueue = BattlegroundMgr::BGQueueTypeId(BATTLEGROUND_AA, arenaTeam->GetType()))
+    {
+        GroupQueueInfo ginfo;
+        BattlegroundQueue& queue = sBattlegroundMgr->GetBattlegroundQueue(bgQueue);
+        if (queue.GetPlayerGroupInfoData(_player->GetGUID(), &ginfo))
+            if (ginfo.IsInvitedToBGInstanceGUID)
+            {
+                SendArenaTeamCommandResult(ERR_ARENA_TEAM_QUIT_S, "", "", ERR_ARENA_TEAMS_LOCKED);
+                return;
+            }
     }
 
     // Player cannot be removed during fights
